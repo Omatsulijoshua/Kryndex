@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL - Transactional Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: kryndex-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: kryndex_db_user
+      POSTGRES_PASSWORD: kryndex_secure_db_pass
+      POSTGRES_DB: kryndex_exchange
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Redis - Caching, Session store, Rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: kryndex-redis
+    restart: always
+    command: redis-server --requirepass kryndex_secure_redis_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # 3. Kafka - Message Broker & KRaft Mode Orchestration
+  kafka:
+    image: bitnami/kafka:3.4.0
+    container_name: kryndex-kafka
+    restart: always
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      # Configure KRaft (No Zookeeper)
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+  # 4. ClickHouse - Analytical DB
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: kryndex-clickhouse
+    restart: always
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=kryndex_ch_secure_pass
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # 5. OpenSearch - Operational Logs
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: kryndex-opensearch
+    restart: always
+    environment:
+      - cluster.name=kryndex-logs
+      - node.name=kryndex-node
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
+  # 6. MinIO - Local S3-Compatible Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: kryndex-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: kryndex_s3_admin
+      MINIO_ROOT_PASSWORD: kryndex_s3_secure_secret_key
+    volumes:
+      - minio_data:/data
+
+  # 7. Mailpit - Mail Testing Server
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: kryndex-mailpit
+    restart: always
+    ports:
+      - "1025:1025" # SMTP Port
+      - "8025:8025" # Web UI Port
+    volumes:
+      - mailpit_data:/data
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  kafka_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  opensearch_data:
+    driver: local
+  minio_data:
+    driver: local
+  mailpit_data:
+    driver: local
