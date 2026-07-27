@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: kryndex_secure_db_pass
       POSTGRES_DB: kryndex_exchange
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -28,7 +28,7 @@ services:
 
   # 3. Kafka - Message Broker & KRaft Mode Orchestration
   kafka:
-    image: bitnami/kafka:3.4.0
+    image: bitnamilegacy/kafka:latest
     container_name: kryndex-kafka
     restart: always
     ports:
@@ -55,7 +55,7 @@ services:
     restart: always
     ports:
       - "8123:8123"
-      - "9000:9000"
+      - "9002:9000"
     environment:
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=kryndex_ch_secure_pass

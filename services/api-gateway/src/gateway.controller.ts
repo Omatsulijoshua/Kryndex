@@ -6,6 +6,7 @@ import axios from 'axios';
 export class GatewayController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
   private readonly tradeServiceUrl = process.env.TRADE_SERVICE_URL || 'http://localhost:3002';
+  private readonly walletServiceUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3003';
 
   @All('auth/*')
   async proxyAuthRequests(@Req() req: Request, @Res() res: Response) {
@@ -15,6 +16,11 @@ export class GatewayController {
   @All(['orders', 'orders/*', 'orderbook', 'ledger/*'])
   async proxyTradeRequests(@Req() req: Request, @Res() res: Response) {
     return this.forwardRequest(this.tradeServiceUrl, req, res);
+  }
+
+  @All(['wallet', 'wallet/*'])
+  async proxyWalletRequests(@Req() req: Request, @Res() res: Response) {
+    return this.forwardRequest(this.walletServiceUrl, req, res);
   }
 
   private async forwardRequest(targetBaseUrl: string, req: Request, res: Response) {
