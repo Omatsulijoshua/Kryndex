@@ -5,12 +5,30 @@ import { MatchingEngine, BookOrder } from './matching-engine';
 import { LedgerService } from './ledger.service';
 import { PlaceOrderDto, OrderSide } from './dto/order.dto';
 
+import Redis from 'ioredis';
+
 @Injectable()
 export class TradeService implements OnModuleInit {
+  private redisClient!: Redis;
+
   constructor(
     private readonly matchingEngine: MatchingEngine,
     private readonly ledgerService: LedgerService,
-  ) {}
+  ) {
+    this.redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || 'kryndex_secure_redis_pass',
+    });
+  }
+
+  private async publishEvent(channel: string, payload: any) {
+    try {
+      await this.redisClient.publish(channel, JSON.stringify(payload));
+    } catch (err) {
+      console.warn(`[TradeService] Redis publish error on channel ${channel}:`, err);
+    }
+  }
 
   // 1. REHYDRATE MATCHING ENGINE FROM DATABASE RESTING ORDERS (On startup)
   async onModuleInit() {
@@ -55,7 +73,7 @@ export class TradeService implements OnModuleInit {
     if (qtyDec.isNegative() || qtyDec.isZero()) throw new BadRequestException('Invalid quantity parameters');
 
     // Run core matching cycle in a secure DB transaction context
-    return prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Check & Lock Funds
       if (dto.side === OrderSide.BUY) {
         // Buyer needs quoteAsset (e.g. USDT) to purchase BTC
@@ -172,11 +190,69 @@ export class TradeService implements OnModuleInit {
         matches: matchResult.trades,
       };
     });
+
+    try {
+      const { order, matches } = result;
+
+      if (matches.length > 0) {
+        await this.publishEvent(`trades:${dto.symbol}`, {
+          symbol: dto.symbol,
+          trades: matches.map((t: any) => ({
+            price: t.price.toString(),
+            quantity: t.quantity.toString(),
+            buyerId: t.buyerId,
+            sellerId: t.sellerId,
+            timestamp: Date.now(),
+          })),
+        });
+
+        for (const t of matches) {
+          await this.publishEvent(`user:${t.buyerId}`, {
+            type: 'TRADE_EXECUTION',
+            trade: {
+              symbol: dto.symbol,
+              side: 'BUY',
+              price: t.price.toString(),
+              quantity: t.quantity.toString(),
+            },
+          });
+          await this.publishEvent(`user:${t.sellerId}`, {
+            type: 'TRADE_EXECUTION',
+            trade: {
+              symbol: dto.symbol,
+              side: 'SELL',
+              price: t.price.toString(),
+              quantity: t.quantity.toString(),
+            },
+          });
+        }
+      }
+
+      await this.publishEvent(`user:${dto.userId}`, {
+        type: 'ORDER_UPDATE',
+        order: {
+          id: order.id,
+          symbol: order.symbol,
+          side: order.side,
+          status: order.status,
+          price: order.price.toString(),
+          quantity: order.quantity.toString(),
+          filledQuantity: order.filledQuantity.toString(),
+        },
+      });
+
+      const depth = this.matchingEngine.getOrderBook(dto.symbol);
+      await this.publishEvent(`orderbook:${dto.symbol}`, depth);
+    } catch (err) {
+      console.warn(`[TradeService] Match event publish failed:`, err);
+    }
+
+    return result;
   }
 
   // 3. CANCEL ORDER
   async cancelOrder(orderId: string) {
-    return prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
       });
@@ -208,6 +284,24 @@ export class TradeService implements OnModuleInit {
 
       return updatedOrder;
     });
+
+    try {
+      await this.publishEvent(`user:${result.userId}`, {
+        type: 'ORDER_CANCELLED',
+        order: {
+          id: result.id,
+          symbol: result.symbol,
+          status: result.status,
+        },
+      });
+
+      const depth = this.matchingEngine.getOrderBook(result.symbol);
+      await this.publishEvent(`orderbook:${result.symbol}`, depth);
+    } catch (err) {
+      console.warn(`[TradeService] Cancel event publish failed:`, err);
+    }
+
+    return result;
   }
 
   // 4. GET ACTIVE USER ORDERS

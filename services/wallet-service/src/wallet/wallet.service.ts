@@ -1,11 +1,29 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { prisma, AccountType, LedgerEntryType } from '@kryndex/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import Redis from 'ioredis';
 
 @Injectable()
 export class WalletService {
   private readonly SYSTEM_RESERVE_ID = '00000000-0000-0000-0000-000000000000';
   private readonly SYSTEM_FEE_ID = '00000000-0000-0000-0000-000000000002';
+  private redisClient!: Redis;
+
+  constructor() {
+    this.redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || 'kryndex_secure_redis_pass',
+    });
+  }
+
+  private async publishEvent(channel: string, payload: any) {
+    try {
+      await this.redisClient.publish(channel, JSON.stringify(payload));
+    } catch (err) {
+      console.warn(`[WalletService] Redis publish error on channel ${channel}:`, err);
+    }
+  }
 
   // 1. GET OR GENERATE DEPOSIT ADDRESS
   async getOrCreateAddress(userId: string, asset: string) {
@@ -62,7 +80,7 @@ export class WalletService {
       });
     }
 
-    return prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const account = await this.getOrCreateAccount(tx, userId, asset);
       const reserveAcc = await this.getOrCreateAccount(tx, this.SYSTEM_RESERVE_ID, asset, AccountType.ASSET);
 
@@ -90,6 +108,23 @@ export class WalletService {
 
       return finalDeposit;
     });
+
+    try {
+      await this.publishEvent(`user:${userId}`, {
+        type: 'DEPOSIT_CONFIRMED',
+        deposit: {
+          id: result.id,
+          asset: result.asset,
+          amount: result.amount.toString(),
+          confirmations: result.confirmations,
+          status: result.status,
+        },
+      });
+    } catch (err) {
+      console.warn(`[WalletService] Deposit event publish failed:`, err);
+    }
+
+    return result;
   }
 
   // 3. WITHDRAWAL REQUEST
@@ -106,7 +141,7 @@ export class WalletService {
     const withdrawalFee = asset === 'BTC' ? new Decimal('0.0005') : new Decimal('10.0');
     const totalCost = amount.plus(withdrawalFee);
 
-    return prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const account = await this.getOrCreateAccount(tx, userId, asset);
 
       if (account.balance.lessThan(totalCost)) {
@@ -134,11 +169,28 @@ export class WalletService {
 
       return withdrawal;
     });
+
+    try {
+      await this.publishEvent(`user:${userId}`, {
+        type: 'WITHDRAWAL_REQUESTED',
+        withdrawal: {
+          id: result.id,
+          asset: result.asset,
+          amount: result.amount.toString(),
+          fee: result.fee.toString(),
+          status: result.status,
+        },
+      });
+    } catch (err) {
+      console.warn(`[WalletService] Withdrawal request event publish failed:`, err);
+    }
+
+    return result;
   }
 
   // 4. ADMIN APPROVAL / REJECTION
   async handleWithdrawalApproval(withdrawalId: string, status: 'APPROVED' | 'REJECTED', reviewerId: string) {
-    return prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const withdrawal = await tx.withdrawal.findUnique({
         where: { id: withdrawalId },
       });
@@ -217,6 +269,24 @@ export class WalletService {
         },
       });
     });
+
+    try {
+      await this.publishEvent(`user:${result.userId}`, {
+        type: 'WITHDRAWAL_STATUS_UPDATE',
+        withdrawal: {
+          id: result.id,
+          asset: result.asset,
+          amount: result.amount.toString(),
+          status: result.status,
+          txHash: result.txHash,
+          reviewComments: result.reviewComments,
+        },
+      });
+    } catch (err) {
+      console.warn(`[WalletService] Withdrawal update event publish failed:`, err);
+    }
+
+    return result;
   }
 
   private async getOrCreateAccount(tx: any, userId: string, asset: string, type: AccountType = AccountType.LIABILITY) {
