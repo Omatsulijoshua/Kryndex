@@ -12,7 +12,7 @@ export default function VerifyEmailPage() {
       const params = new URLSearchParams(window.location.search);
       const emailParam = params.get('email');
       if (emailParam) {
-        setEmail(emailParam);
+        setTimeout(() => setEmail(emailParam), 0);
       }
     }
   }, []);
@@ -65,7 +65,7 @@ export default function VerifyEmailPage() {
         </form>
 
         <div className="flex justify-between items-center mt-8 text-xs text-[#A1A1AA]">
-          <span>Didn't receive the code?</span>
+          <span>Didn&apos;t receive the code?</span>
           <button
             onClick={() => alert('Mock: Resent code')}
             className="text-[#F5B731] hover:underline font-bold bg-transparent border-none cursor-pointer"

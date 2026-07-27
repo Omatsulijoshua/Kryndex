@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Hardcoded L2 Order Book seed
 const INITIAL_ASKS = [
@@ -27,6 +27,18 @@ const INITIAL_TRADES = [
   { time: '14:23:42', price: 67242.00, qty: 1.8400, side: 'SELL' },
 ];
 
+interface UserOrder {
+  id: string;
+  pair: string;
+  side: 'BUY' | 'SELL';
+  type: 'LIMIT' | 'MARKET';
+  price: number;
+  qty: number;
+  filled: number;
+  status: string;
+  date: string;
+}
+
 export default function TradingTerminal() {
   const [activeTab, setActiveTab] = useState<'LIMIT' | 'MARKET'>('LIMIT');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
@@ -39,7 +51,7 @@ export default function TradingTerminal() {
   const [priceChange, setPriceChange] = useState(2.45);
   
   // User orders mock state
-  const [userOrders, setUserOrders] = useState<any[]>([
+  const [userOrders, setUserOrders] = useState<UserOrder[]>([
     { id: '1', pair: 'BTC/USDT', side: 'BUY', type: 'LIMIT', price: 67100.00, qty: 0.15, filled: 0.0, status: 'OPEN', date: '2026-07-27 14:10' }
   ]);
 
@@ -139,16 +151,16 @@ export default function TradingTerminal() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         
         {/* Left Side: Orderbook & Recent Trades */}
-        <div className="w-full lg:w-[320px] border-b lg:border-b-0 lg:border-r border-[#2B3139] flex flex-col shrink-0">
+        <div className="w-full lg:w-[320px] border-b lg:border-b-0 lg:border-r border-[#2B3139] flex flex-col shrink-0 h-full overflow-hidden">
           {/* Orderbook Header */}
           <div className="p-3 border-b border-[#2B3139] bg-[#151A21]">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#A1A1AA]">Order Book</h3>
           </div>
           
           {/* Orderbook Table */}
-          <div className="flex-1 flex flex-col justify-between p-3 font-mono text-xs overflow-y-auto">
+          <div className="flex-1 flex flex-col justify-between p-3 font-mono text-[10px] overflow-y-auto border-b border-[#2B3139]">
             {/* Asks (Sells) - Red */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="grid grid-cols-3 text-[#A1A1AA]/50 font-sans pb-1">
                 <span>Price(USDT)</span>
                 <span className="text-right">Qty(BTC)</span>
@@ -164,20 +176,40 @@ export default function TradingTerminal() {
             </div>
 
             {/* Current Price Ticker */}
-            <div className="py-3 border-y border-[#2B3139] my-2 text-center">
-              <span className={`text-xl font-bold font-mono ${priceChange >= 0 ? 'text-[#16C784]' : 'text-[#EA3943]'}`}>
+            <div className="py-2 border-y border-[#2B3139] my-1 text-center">
+              <span className={`text-base font-bold font-mono ${priceChange >= 0 ? 'text-[#16C784]' : 'text-[#EA3943]'}`}>
                 {currentPrice.toFixed(2)}
               </span>
-              <span className="text-xs text-[#A1A1AA] block font-sans">≈ ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
 
             {/* Bids (Buys) - Green */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {bids.map((bid, idx) => (
                 <div key={idx} className="grid grid-cols-3 hover:bg-[#1E2329]/50 py-0.5 cursor-pointer">
                   <span className="text-[#16C784]">{bid.price.toFixed(2)}</span>
                   <span className="text-right text-[#F4F4F5]">{bid.qty.toFixed(4)}</span>
                   <span className="text-right text-[#A1A1AA]">{bid.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Trades Table */}
+          <div className="h-[250px] flex flex-col bg-[#151A21]/10">
+            <div className="p-3 border-b border-[#2B3139] bg-[#151A21]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#A1A1AA]">Recent Market Trades</h3>
+            </div>
+            <div className="flex-1 p-3 font-mono text-[10px] overflow-y-auto space-y-1">
+              <div className="grid grid-cols-3 text-[#A1A1AA]/50 font-sans pb-1">
+                <span>Time</span>
+                <span className="text-right">Price(USDT)</span>
+                <span className="text-right">Amount(BTC)</span>
+              </div>
+              {trades.map((trade, idx) => (
+                <div key={idx} className="grid grid-cols-3 py-0.5">
+                  <span className="text-[#A1A1AA]">{trade.time}</span>
+                  <span className={`text-right font-bold ${trade.side === 'BUY' ? 'text-[#16C784]' : 'text-[#EA3943]'}`}>{trade.price.toFixed(2)}</span>
+                  <span className="text-right text-[#F4F4F5]">{trade.qty.toFixed(4)}</span>
                 </div>
               ))}
             </div>

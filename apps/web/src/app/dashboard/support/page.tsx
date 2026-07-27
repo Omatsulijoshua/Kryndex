@@ -7,13 +7,22 @@ const INITIAL_TICKETS = [
   { id: 'TK-8120', subject: 'API Key permissions config check', category: 'API_KEYS', priority: 'LOW', status: 'RESOLVED', date: '2026-07-25' },
 ];
 
+interface SupportTicket {
+  id: string;
+  subject: string;
+  category: string;
+  priority: string;
+  status: string;
+  date: string;
+}
+
 export default function SupportPage() {
-  const [tickets, setTickets] = useState(INITIAL_TICKETS);
+  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('WALLETS');
   const [priority, setPriority] = useState('MEDIUM');
   const [description, setDescription] = useState('');
-  const [activeTicket, setActiveTicket] = useState<any>(INITIAL_TICKETS[0]);
+  const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(INITIAL_TICKETS[0]);
 
   const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();

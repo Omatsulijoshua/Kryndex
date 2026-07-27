@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 
 export default function KycPage() {
-  const [kycLevel, setKycLevel] = useState<'STANDARD' | 'ENHANCED'>('STANDARD');
   const [docType, setDocType] = useState('PASSPORT');
   const [uploading, setUploading] = useState(false);
 
@@ -39,7 +38,7 @@ export default function KycPage() {
                 >
                   <option value="PASSPORT">Passport</option>
                   <option value="NATIONAL_ID">National ID Card</option>
-                  <option value="DRIVERS_LICENSE">Driver's License</option>
+                  <option value="DRIVERS_LICENSE">Driver&apos;s License</option>
                 </select>
               </div>
 

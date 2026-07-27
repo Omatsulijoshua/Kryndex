@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const MOCK_ADDRESSES: Record<string, string> = {
   BTC: 'tb1q3y9x2n4x9u8w8q7y8z6x5v4u3t2s1r0q9p8o7n6m',
