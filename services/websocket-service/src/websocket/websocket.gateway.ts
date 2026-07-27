@@ -34,10 +34,10 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       const token = client.handshake.query?.token as string || client.handshake.headers?.authorization?.split(' ')[1];
       
       if (token) {
-        const decoded = jwt.verify(token, this.jwtSecret) as { userId: string };
-        client.data.userId = decoded.userId;
-        client.join(`user:${decoded.userId}`);
-        console.log(`[WS] Authenticated user connected: ${decoded.userId} (socket: ${client.id})`);
+        const decoded = jwt.verify(token, this.jwtSecret) as { sub: string };
+        client.data.userId = decoded.sub;
+        client.join(`user:${decoded.sub}`);
+        console.log(`[WS] Authenticated user connected: ${decoded.sub} (socket: ${client.id})`);
       } else {
         console.log(`[WS] Anonymous client connected (socket: ${client.id})`);
       }
