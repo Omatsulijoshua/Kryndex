@@ -46,6 +46,8 @@ model User {
   events       SecurityEvent[]
   staffRoles   StaffRole[]
   kycApplications KycApplication[]
+  accounts     Account[]
+  orders       Order[]
 }
 
 model UserProfile {
@@ -166,4 +168,103 @@ model KycApplication {
   updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
 
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum OrderStatus {
+  PENDING
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  LIMIT
+  MARKET
+}
+
+model Account {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  asset         String      // e.g. BTC, USDT
+  type          AccountType @default(LIABILITY)
+  balance       Decimal     @db.Decimal(36, 18) @default(0)
+  lockedBalance Decimal     @db.Decimal(36, 18) @default(0)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @db.Timestamptz(6)
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+
+  @@unique([userId, asset])
+}
+
+model LedgerTransaction {
+  id          String      @id @default(uuid()) @db.Uuid
+  description String
+  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+
+  entries     LedgerEntry[]
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid()) @db.Uuid
+  transactionId String          @db.Uuid
+  accountId     String          @db.Uuid
+  type          LedgerEntryType
+  amount        Decimal         @db.Decimal(36, 18)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account       Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @db.Uuid
+  symbol         String      // e.g. BTC_USDT
+  side           OrderSide
+  type           OrderType
+  price          Decimal     @db.Decimal(36, 18)
+  quantity       Decimal     @db.Decimal(36, 18)
+  filledQuantity Decimal     @db.Decimal(36, 18) @default(0)
+  status         OrderStatus @default(PENDING)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyTrades      Trade[]     @relation("BuyerOrder")
+  sellTrades     Trade[]     @relation("SellerOrder")
+}
+
+model Trade {
+  id            String   @id @default(uuid()) @db.Uuid
+  symbol        String
+  price         Decimal  @db.Decimal(36, 18)
+  quantity      Decimal  @db.Decimal(36, 18)
+  buyerId       String   @db.Uuid
+  sellerId      String   @db.Uuid
+  buyerOrderId  String   @db.Uuid
+  sellerOrderId String   @db.Uuid
+  makerFee      Decimal  @db.Decimal(36, 18)
+  takerFee      Decimal  @db.Decimal(36, 18)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  buyerOrder    Order    @relation("BuyerOrder", fields: [buyerOrderId], references: [id], onDelete: Cascade)
+  sellerOrder   Order    @relation("SellerOrder", fields: [sellerOrderId], references: [id], onDelete: Cascade)
 }

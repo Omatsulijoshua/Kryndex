@@ -5,11 +5,21 @@ import axios from 'axios';
 @Controller()
 export class GatewayController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+  private readonly tradeServiceUrl = process.env.TRADE_SERVICE_URL || 'http://localhost:3002';
 
   @All('auth/*')
   async proxyAuthRequests(@Req() req: Request, @Res() res: Response) {
-    const path = req.path; // e.g. /auth/login
-    const targetUrl = `${this.authServiceUrl}${path}`;
+    return this.forwardRequest(this.authServiceUrl, req, res);
+  }
+
+  @All(['orders', 'orders/*', 'orderbook', 'ledger/*'])
+  async proxyTradeRequests(@Req() req: Request, @Res() res: Response) {
+    return this.forwardRequest(this.tradeServiceUrl, req, res);
+  }
+
+  private async forwardRequest(targetBaseUrl: string, req: Request, res: Response) {
+    const path = req.path;
+    const targetUrl = `${targetBaseUrl}${path}`;
 
     try {
       const response = await axios({
@@ -30,7 +40,7 @@ export class GatewayController {
       }
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'GATEWAY_ERROR: Failed to contact internal auth-service',
+        message: `GATEWAY_ERROR: Failed to contact internal service at ${targetBaseUrl}`,
         error: error.message,
       });
     }
