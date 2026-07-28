@@ -5,6 +5,8 @@ envVarGroups:
         generateValue: true
       - key: REDIS_PASSWORD
         value: "" # Render Redis runs passwordless internally
+      - key: DATABASE_URL
+        value: "REPLACE_THIS_WITH_YOUR_NEON_DATABASE_URL"
 
 services:
   # Redis Cache instance
@@ -22,8 +24,6 @@ services:
     startCommand: node scripts/start-production.js
     envVars:
       - fromGroup: kryndex-shared-env
-      - key: DATABASE_URL
-        sync: false # User will paste their existing database connection string
       - key: REDIS_HOST
         fromService:
           type: redis
