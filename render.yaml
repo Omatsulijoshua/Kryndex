@@ -20,7 +20,7 @@ services:
     name: kryndex-backend
     env: node
     plan: free
-    buildCommand: pnpm install && npx prisma db push --schema=packages/database/prisma/schema.prisma && pnpm build
+    buildCommand: pnpm install && pnpm --filter @kryndex/database db:push && pnpm build
     startCommand: node scripts/start-production.js
     envVars:
       - fromGroup: kryndex-shared-env
