@@ -23,7 +23,7 @@ services:
   - type: pserv
     name: auth-service
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter auth-service build
     startCommand: node services/auth-service/dist/main.js
     envVars:
@@ -39,7 +39,7 @@ services:
   - type: pserv
     name: trade-service
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter trade-service build
     startCommand: node services/trade-service/dist/main.js
     envVars:
@@ -64,7 +64,7 @@ services:
   - type: pserv
     name: wallet-service
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter wallet-service build
     startCommand: node services/wallet-service/dist/main.js
     envVars:
@@ -90,7 +90,7 @@ services:
   - type: web
     name: websocket-service
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter websocket-service build
     startCommand: node services/websocket-service/dist/main.js
     envVars:
@@ -116,7 +116,7 @@ services:
   - type: web
     name: api-gateway
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter api-gateway build
     startCommand: node services/api-gateway/dist/main.js
     envVars:
