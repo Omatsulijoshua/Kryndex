@@ -19,88 +19,20 @@ services:
     plan: free
     ipAllowList: [] # internal access only
 
-  # 1. Auth Service (Private)
-  - type: pserv
-    name: auth-service
-    env: node
-    plan: free
-    buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter auth-service build
-    startCommand: node services/auth-service/dist/main.js
-    envVars:
-      - fromGroup: kryndex-shared-env
-      - key: DATABASE_URL
-        fromDatabase:
-          name: kryndex-db
-          property: connectionString
-      - key: PORT
-        value: 3001
-
-  # 2. Trade Service (Private)
-  - type: pserv
-    name: trade-service
-    env: node
-    plan: free
-    buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter trade-service build
-    startCommand: node services/trade-service/dist/main.js
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: kryndex-db
-          property: connectionString
-      - key: PORT
-        value: 3002
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: kryndex-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: kryndex-redis
-          property: port
-
-  # 3. Wallet Service (Private)
-  - type: pserv
-    name: wallet-service
-    env: node
-    plan: free
-    buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter wallet-service build
-    startCommand: node services/wallet-service/dist/main.js
-    envVars:
-      - fromGroup: kryndex-shared-env
-      - key: DATABASE_URL
-        fromDatabase:
-          name: kryndex-db
-          property: connectionString
-      - key: PORT
-        value: 3003
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: kryndex-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: kryndex-redis
-          property: port
-
-  # 4. WebSocket Service (Public)
+  # Combined Backend Web Service (Runs Gateway + all microservices internally)
   - type: web
-    name: websocket-service
+    name: kryndex-backend
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter websocket-service build
-    startCommand: node services/websocket-service/dist/main.js
+    buildCommand: pnpm install && pnpm build
+    startCommand: node scripts/start-production.js
+    envVarGroups:
+      - name: kryndex-shared-env
     envVars:
-      - fromGroup: kryndex-shared-env
       - key: DATABASE_URL
         fromDatabase:
           name: kryndex-db
           property: connectionString
-      - key: PORT
-        value: 3004
       - key: REDIS_HOST
         fromService:
           type: redis
@@ -111,20 +43,3 @@ services:
           type: redis
           name: kryndex-redis
           property: port
-
-  # 5. API Gateway (Public Web service)
-  - type: web
-    name: api-gateway
-    env: node
-    plan: free
-    buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter api-gateway build
-    startCommand: node services/api-gateway/dist/main.js
-    envVars:
-      - key: PORT
-        value: 3000
-      - key: AUTH_SERVICE_URL
-        value: http://auth-service:3001
-      - key: TRADE_SERVICE_URL
-        value: http://trade-service:3002
-      - key: WALLET_SERVICE_URL
-        value: http://wallet-service:3003

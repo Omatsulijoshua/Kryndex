@@ -7,6 +7,7 @@ export class GatewayController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
   private readonly tradeServiceUrl = process.env.TRADE_SERVICE_URL || 'http://localhost:3002';
   private readonly walletServiceUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3003';
+  private readonly websocketServiceUrl = process.env.WEBSOCKET_SERVICE_URL || 'http://localhost:3004';
 
   @All('auth/*')
   async proxyAuthRequests(@Req() req: Request, @Res() res: Response) {
@@ -23,9 +24,15 @@ export class GatewayController {
     return this.forwardRequest(this.walletServiceUrl, req, res);
   }
 
+  @All(['socket.io', 'socket.io/*'])
+  async proxySocketIoRequests(@Req() req: Request, @Res() res: Response) {
+    return this.forwardRequest(this.websocketServiceUrl, req, res);
+  }
+
   private async forwardRequest(targetBaseUrl: string, req: Request, res: Response) {
     const path = req.path;
-    const targetUrl = `${targetBaseUrl}${path}`;
+    const query = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    const targetUrl = `${targetBaseUrl}${path}${query}`;
 
     try {
       const response = await axios({
@@ -36,6 +43,8 @@ export class GatewayController {
           'user-agent': req.headers['user-agent'] || '',
           'x-forwarded-for': req.headers['x-forwarded-for'] || req.ip || '',
           'Content-Type': 'application/json',
+          // Pass authorization header if present
+          ...(req.headers.authorization ? { 'authorization': req.headers.authorization } : {}),
         },
       });
 
