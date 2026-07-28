@@ -13,6 +13,14 @@ console.log('================================================================');
 console.log('--- STARTING ALL KRYNDEX BACKEND SERVICES IN A SINGLE CONTAINER ---');
 console.log('================================================================');
 
+console.log('--- DIAGNOSTIC RUNTIME ENVIRONMENT CHECK ---');
+console.log('Available Env Keys:', Object.keys(process.env).sort());
+console.log('DATABASE_URL status:', process.env.DATABASE_URL ? `FOUND (length: ${process.env.DATABASE_URL.length})` : 'NOT FOUND');
+console.log('REDIS_HOST status:', process.env.REDIS_HOST ? `FOUND (${process.env.REDIS_HOST})` : 'NOT FOUND');
+console.log('REDIS_PORT status:', process.env.REDIS_PORT ? `FOUND (${process.env.REDIS_PORT})` : 'NOT FOUND');
+console.log('PORT (exposed):', process.env.PORT || 'not defined');
+console.log('================================================================');
+
 const processes = [];
 let shuttingDown = false;
 
