@@ -37,14 +37,18 @@ We have provided a Render Blueprint specification (`render.yaml`) in the root di
 4. Render will parse the `render.yaml` file and show all resources to be spawned:
    - Managed Postgres Database (`kryndex-db`)
    - Managed Redis Cache (`kryndex-redis`)
-   - Backend Microservices: `auth-service`, `trade-service`, `wallet-service`, `websocket-service`, `api-gateway`.
+   - Combined Backend Service (`kryndex-backend`): Runs API Gateway and all microservices concurrently inside the same container.
 5. Enter a Blueprint name and click **Apply**.
 6. Render will spin up the database and cache first, then build and deploy the Node.js services.
 
 ### Microservice Networking
-- **API Gateway**: Exposed publicly on port `3000`. This will be your main entry point for HTTP requests.
-- **WebSocket Service**: Exposed publicly on port `3004` to allow clients to establish websocket connections.
-- **Auth/Trade/Wallet Services**: Deployed as private services, secure from direct external access, communicating internally.
+- **Exposed Public URL**: The single exposed port maps to the API Gateway.
+- **WebSocket Forwarding**: The API Gateway automatically intercepts WebSocket requests (`/socket.io/*` paths and connection upgrades) on the main port and proxies them internally to the local WebSocket service (port `3004`).
+- **Private Microservices**: Communication between API Gateway and other services occurs over localhost private ports (`3001` for Auth, `3002` for Trading, `3003` for Wallet, `3004` for WebSockets) inside the secure container.
+
+This means you only need to configure:
+- `NEXT_PUBLIC_API_URL`: Your Render backend service URL (e.g. `https://kryndex-backend.onrender.com`).
+- `NEXT_PUBLIC_WS_URL`: The exact same URL (since WebSockets are proxied through the same endpoint!).
 
 ---
 
