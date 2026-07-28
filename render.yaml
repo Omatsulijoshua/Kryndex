@@ -12,7 +12,7 @@ services:
     ipAllowList: [] # internal access only
 
   # 1. Auth Service (Private)
-  - type: private
+  - type: pserv
     name: auth-service
     env: node
     plan: starter
@@ -29,7 +29,7 @@ services:
         generateValue: true
 
   # 2. Trade Service (Private)
-  - type: private
+  - type: pserv
     name: trade-service
     env: node
     plan: starter
@@ -52,7 +52,7 @@ services:
           property: port
 
   # 3. Wallet Service (Private)
-  - type: private
+  - type: pserv
     name: wallet-service
     env: node
     plan: starter
