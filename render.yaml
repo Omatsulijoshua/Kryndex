@@ -1,9 +1,3 @@
-databases:
-  - name: kryndex-db
-    databaseName: kryndex_exchange
-    user: kryndex_db_user
-    plan: free
-
 envVarGroups:
   - name: kryndex-shared-env
     envVars:
@@ -29,9 +23,7 @@ services:
     envVars:
       - fromGroup: kryndex-shared-env
       - key: DATABASE_URL
-        fromDatabase:
-          name: kryndex-db
-          property: connectionString
+        sync: false # User will paste their existing database connection string
       - key: REDIS_HOST
         fromService:
           type: redis
