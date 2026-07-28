@@ -81,3 +81,16 @@ To compile a release APK for Android distribution:
 flutter build apk --release
 ```
 The output file will be saved in `build/app/outputs/flutter-apk/app-release.apk`.
+
+### Deploying Flutter Web to Vercel:
+We have enabled the web platform target in the Flutter project and compiled it to static HTML/JS inside `apps/mobile/build/web`. Since we have unignored this folder, you can deploy it directly as a static website on Vercel:
+1. Log in to your [Vercel](https://vercel.com) dashboard and click **Add New Project**.
+2. Select your connected Git repository.
+3. In the configuration:
+   - **Framework Preset**: select `Other`.
+   - **Root Directory**: set this to `apps/mobile/build/web`.
+   - **Build & Development Settings**:
+     - **Build Command**: (leave empty/disabled)
+     - **Output Directory**: `.`
+4. Click **Deploy**. Vercel will host the Flutter Web application at a production URL.
+
