@@ -4,6 +4,14 @@ databases:
     user: kryndex_db_user
     plan: free
 
+envVarGroups:
+  - name: kryndex-shared-env
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_PASSWORD
+        value: "" # Render Redis runs passwordless internally
+
 services:
   # Redis Cache instance
   - type: redis
@@ -18,6 +26,8 @@ services:
     plan: starter
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter auth-service build
     startCommand: node services/auth-service/dist/main.js
+    envVarGroups:
+      - name: kryndex-shared-env
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -25,8 +35,6 @@ services:
           property: connectionString
       - key: PORT
         value: 3001
-      - key: JWT_SECRET
-        generateValue: true
 
   # 2. Trade Service (Private)
   - type: pserv
@@ -44,10 +52,12 @@ services:
         value: 3002
       - key: REDIS_HOST
         fromService:
+          type: redis
           name: kryndex-redis
           property: host
       - key: REDIS_PORT
         fromService:
+          type: redis
           name: kryndex-redis
           property: port
 
@@ -58,6 +68,8 @@ services:
     plan: starter
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter wallet-service build
     startCommand: node services/wallet-service/dist/main.js
+    envVarGroups:
+      - name: kryndex-shared-env
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -67,16 +79,14 @@ services:
         value: 3003
       - key: REDIS_HOST
         fromService:
+          type: redis
           name: kryndex-redis
           property: host
       - key: REDIS_PORT
         fromService:
+          type: redis
           name: kryndex-redis
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: kryndex-redis
-          property: password
 
   # 4. WebSocket Service (Public)
   - type: web
@@ -85,6 +95,8 @@ services:
     plan: starter
     buildCommand: pnpm install && pnpm --filter @kryndex/database build && pnpm --filter websocket-service build
     startCommand: node services/websocket-service/dist/main.js
+    envVarGroups:
+      - name: kryndex-shared-env
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -94,20 +106,14 @@ services:
         value: 3004
       - key: REDIS_HOST
         fromService:
+          type: redis
           name: kryndex-redis
           property: host
       - key: REDIS_PORT
         fromService:
+          type: redis
           name: kryndex-redis
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: kryndex-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          name: auth-service
-          property: JWT_SECRET
 
   # 5. API Gateway (Public Web service)
   - type: web
