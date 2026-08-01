@@ -14,7 +14,7 @@ export class GatewayController {
     return this.forwardRequest(this.authServiceUrl, req, res);
   }
 
-  @All(['orders', 'orders/*', 'orderbook', 'ledger/*'])
+  @All(['orders', 'orders/*', 'orderbook', 'ledger/*', 'margin', 'margin/*'])
   async proxyTradeRequests(@Req() req: Request, @Res() res: Response) {
     return this.forwardRequest(this.tradeServiceUrl, req, res);
   }

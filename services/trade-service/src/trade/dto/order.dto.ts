@@ -1,4 +1,5 @@
-import { IsUUID, IsString, IsEnum, IsNotEmpty } from 'class-validator';
+import { IsUUID, IsString, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { TradeMode } from '@kryndex/database';
 
 export enum OrderSide {
   BUY = 'BUY',
@@ -31,4 +32,8 @@ export class PlaceOrderDto {
   @IsString()
   @IsNotEmpty()
   quantity!: string; // Using string to prevent precision loss in transport
+
+  @IsEnum(TradeMode)
+  @IsOptional()
+  tradeMode?: TradeMode;
 }

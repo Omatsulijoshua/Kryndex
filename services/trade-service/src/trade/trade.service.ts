@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
-import { prisma, OrderStatus } from '@kryndex/database';
+import { prisma, OrderStatus, TradeMode } from '@kryndex/database';
 import { Decimal } from '@prisma/client/runtime/library';
 import { MatchingEngine, BookOrder } from './matching-engine';
 import { LedgerService } from './ledger.service';
+import { MarginService } from './margin.service';
 import { PlaceOrderDto, OrderSide } from './dto/order.dto';
 
 import Redis from 'ioredis';
@@ -14,6 +15,7 @@ export class TradeService implements OnModuleInit {
   constructor(
     private readonly matchingEngine: MatchingEngine,
     private readonly ledgerService: LedgerService,
+    private readonly marginService: MarginService,
   ) {
     this.redisClient = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -68,20 +70,32 @@ export class TradeService implements OnModuleInit {
     const priceDec = new Decimal(dto.price);
     const qtyDec = new Decimal(dto.quantity);
     const [baseAsset, quoteAsset] = dto.symbol.split('_');
+    const tradeMode = dto.tradeMode || TradeMode.SPOT;
 
     if (priceDec.isNegative() || priceDec.isZero()) throw new BadRequestException('Invalid price parameters');
     if (qtyDec.isNegative() || qtyDec.isZero()) throw new BadRequestException('Invalid quantity parameters');
 
     // Run core matching cycle in a secure DB transaction context
     const result = await prisma.$transaction(async (tx: any) => {
+      // Pre-trade risk audit for Margin mode
+      if (tradeMode === TradeMode.MARGIN) {
+        const risk = await this.marginService.calculateTxMarginLevel(tx, dto.userId);
+        if (risk.totalDebt.greaterThan(0) && risk.marginLevel.lessThan(1.5)) {
+          throw new BadRequestException(
+            'MARGIN_CALL_BLOCKED_ORDER',
+            `Cannot place margin order while under margin call warning. Level: ${risk.marginLevel.toFixed(2)}`,
+          );
+        }
+      }
+
       // 1. Check & Lock Funds
       if (dto.side === OrderSide.BUY) {
         // Buyer needs quoteAsset (e.g. USDT) to purchase BTC
         const cost = qtyDec.times(priceDec);
-        await this.ledgerService.lockFunds(tx, dto.userId, quoteAsset, cost);
+        await this.ledgerService.lockFunds(tx, dto.userId, quoteAsset, cost, tradeMode);
       } else {
         // Seller needs baseAsset (e.g. BTC) to sell for USDT
-        await this.ledgerService.lockFunds(tx, dto.userId, baseAsset, qtyDec);
+        await this.ledgerService.lockFunds(tx, dto.userId, baseAsset, qtyDec, tradeMode);
       }
 
       // 2. Write Order Record to SQL
@@ -95,6 +109,7 @@ export class TradeService implements OnModuleInit {
           quantity: qtyDec,
           filledQuantity: new Decimal(0),
           status: OrderStatus.PENDING,
+          tradeMode: tradeMode,
         },
       });
 
@@ -137,6 +152,14 @@ export class TradeService implements OnModuleInit {
           },
         });
 
+        // Update resting order fill details in database
+        const restingOrderId = dto.side === OrderSide.BUY ? trade.sellerOrderId : trade.buyerOrderId;
+        const restingOrder = await tx.order.findUnique({ where: { id: restingOrderId } });
+        const restingTradeMode = restingOrder?.tradeMode || TradeMode.SPOT;
+
+        const buyerTradeMode = dto.side === OrderSide.BUY ? tradeMode : restingTradeMode;
+        const sellerTradeMode = dto.side === OrderSide.SELL ? tradeMode : restingTradeMode;
+
         // Mutate credit/debit balances in ledger
         await this.ledgerService.settleTrade(
           tx,
@@ -147,11 +170,9 @@ export class TradeService implements OnModuleInit {
           trade.quantity,
           makerFee,
           takerFee,
+          buyerTradeMode,
+          sellerTradeMode,
         );
-
-        // Update resting order fill details in database
-        const restingOrderId = dto.side === OrderSide.BUY ? trade.sellerOrderId : trade.buyerOrderId;
-        const restingOrder = await tx.order.findUnique({ where: { id: restingOrderId } });
 
         if (restingOrder) {
           const nextFilled = new Decimal(restingOrder.filledQuantity).plus(trade.quantity);
@@ -167,6 +188,10 @@ export class TradeService implements OnModuleInit {
             },
           });
         }
+
+        // Post-trade auto-liquidation safety checks
+        await this.marginService.checkAndLiquidate(tx, trade.buyerId);
+        await this.marginService.checkAndLiquidate(tx, trade.sellerId);
       }
 
       // 5. Update Placed Order record
@@ -184,6 +209,9 @@ export class TradeService implements OnModuleInit {
           status: finalStatus,
         },
       });
+
+      // Post-trade auto-liquidation check for the current placing user
+      await this.marginService.checkAndLiquidate(tx, dto.userId);
 
       return {
         order: updatedOrder,
@@ -271,9 +299,9 @@ export class TradeService implements OnModuleInit {
       const [baseAsset, quoteAsset] = order.symbol.split('_');
       if (order.side === OrderSide.BUY) {
         const lockedQuoteRefund = unfilledQty.times(order.price);
-        await this.ledgerService.unlockFunds(tx, order.userId, quoteAsset, lockedQuoteRefund);
+        await this.ledgerService.unlockFunds(tx, order.userId, quoteAsset, lockedQuoteRefund, order.tradeMode);
       } else {
-        await this.ledgerService.unlockFunds(tx, order.userId, baseAsset, unfilledQty);
+        await this.ledgerService.unlockFunds(tx, order.userId, baseAsset, unfilledQty, order.tradeMode);
       }
 
       // Update DB record status

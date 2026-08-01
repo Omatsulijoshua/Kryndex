@@ -3,17 +3,22 @@
 import React, { useState } from 'react';
 
 export default function AdminLogin() {
-  const [userId, setUserId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (userId && password && otp.length === 6) {
-      alert('Mock: Admin Credentials Verified. System Session Initialized.');
-      window.location.href = '/dashboard';
+    if (email.trim().toLowerCase() === 'joshuaomatsuli01@gmail.com' && password === 'Jos@56567') {
+      if (otp.length === 6) {
+        alert('Credentials Verified. Session initialized.');
+        localStorage.setItem('admin_logged_in', 'true');
+        window.location.href = '/dashboard';
+      } else {
+        alert('Please enter a 6-digit TOTP code.');
+      }
     } else {
-      alert('Please fill out all fields and enter a 6-digit TOTP code.');
+      alert('Invalid admin credentials. Please use authorized credentials.');
     }
   };
 
@@ -23,8 +28,8 @@ export default function AdminLogin() {
         <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-[#F5B731]/5 rounded-full blur-2xl pointer-events-none" />
         
         <div className="flex items-center space-x-3 mb-6 select-none justify-center">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#F5B731] to-[#D99A19] flex items-center justify-center font-bold text-[#0B0E11] text-sm">K</div>
-          <span className="font-bold tracking-wider text-lg">KRYNDEX ADMIN</span>
+          <img src="/favicon.png" className="w-8 h-8 rounded-lg object-contain bg-[#0B0E11] border border-[#2B3139]" alt="Kryndex Logo" />
+          <span className="font-bold tracking-wider text-lg text-white">KRYNDEX ADMIN</span>
         </div>
 
         <h2 className="text-xl font-bold tracking-tight mb-2 text-center text-white">System Operations Terminal</h2>
@@ -32,14 +37,14 @@ export default function AdminLogin() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-bold text-[#A1A1AA] mb-2 uppercase tracking-wide">Operator Username / ID</label>
+            <label className="block text-[10px] font-bold text-[#A1A1AA] mb-2 uppercase tracking-wide">Operator Email Address</label>
             <input
-              type="text"
+              type="email"
               required
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="e.g. OP-8109"
-              className="w-full bg-[#0B0E11] border border-[#2B3139] focus:border-[#F5B731] px-4 py-3 rounded-lg text-sm focus:outline-none font-mono text-white"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. name@example.com"
+              className="w-full bg-[#0B0E11] border border-[#2B3139] focus:border-[#F5B731] px-4 py-3 rounded-lg text-sm focus:outline-none text-white font-sans"
             />
           </div>
 
@@ -63,7 +68,7 @@ export default function AdminLogin() {
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              placeholder="000000"
+              placeholder="Enter any 6 digits"
               className="w-full bg-[#0B0E11] border border-[#2B3139] focus:border-[#F5B731] px-4 py-3 rounded-lg text-sm font-mono text-center tracking-widest focus:outline-none text-white"
             />
           </div>

@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const ADMIN_NAV = [
   { name: 'Health & Overview', path: '/dashboard' },
   { name: 'User Management', path: '/dashboard/users' },
+  { name: 'Admin Management', path: '/dashboard/admins' },
   { name: 'KYC Review Desk', path: '/dashboard/kyc' },
   { name: 'Asset & Pairs Configuration', path: '/dashboard/pairs' },
 ];
@@ -14,13 +15,19 @@ const ADMIN_NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (localStorage.getItem('admin_logged_in') !== 'true') {
+      window.location.href = '/auth/login';
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0B0E11] text-[#F4F4F5] flex flex-col font-sans">
       {/* Admin header */}
       <header className="border-b border-[#2B3139] bg-[#151A21] px-6 py-3 flex items-center justify-between h-16 shrink-0 z-20">
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-3 select-none">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#F5B731] to-[#D99A19] flex items-center justify-center font-bold text-[#0B0E11] text-sm">K</div>
+            <img src="/favicon.png" className="w-8 h-8 rounded-lg object-contain bg-[#0B0E11] border border-[#2B3139]" alt="Kryndex Logo" />
             <span className="font-bold tracking-wider text-lg text-white">KRYNDEX CORE ENGINE</span>
           </div>
           <span className="text-[10px] font-mono bg-[#EA3943]/15 text-[#EA3943] px-2.5 py-0.5 rounded font-bold border border-[#EA3943]/20">
@@ -78,12 +85,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="border-t border-[#2B3139] pt-4">
-            <Link
-              href="/auth/login"
-              className="block text-xs font-semibold font-mono text-[#A1A1AA] hover:text-[#EA3943] px-3 py-2 transition-colors"
+            <button
+              onClick={() => {
+                localStorage.removeItem('admin_logged_in');
+                window.location.href = '/auth/login';
+              }}
+              className="w-full text-left block text-xs font-semibold font-mono text-[#A1A1AA] hover:text-[#EA3943] px-3 py-2 transition-colors"
             >
               Terminate Session
-            </Link>
+            </button>
           </div>
         </aside>
 

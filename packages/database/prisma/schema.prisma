@@ -32,89 +32,90 @@ enum KycStatus {
 }
 
 model User {
-  id           String      @id @default(uuid()) @db.Uuid
-  email        String      @unique
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
   passwordHash String
-  status       UserStatus  @default(ACTIVE)
-  createdAt    DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime    @updatedAt @db.Timestamptz(6)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(6)
 
-  profile      UserProfile?
-  security     UserSecurity?
-  sessions     UserSession[]
-  devices      UserDevice[]
-  events       SecurityEvent[]
-  staffRoles   StaffRole[]
+  profile         UserProfile?
+  security        UserSecurity?
+  sessions        UserSession[]
+  devices         UserDevice[]
+  events          SecurityEvent[]
+  staffRoles      StaffRole[]
   kycApplications KycApplication[]
-  accounts     Account[]
-  orders       Order[]
+  accounts        Account[]
+  orders          Order[]
   walletAddresses WalletAddress[]
   deposits        Deposit[]
   withdrawals     Withdrawal[]
+  marginBalances  MarginBalance[]
 }
 
 model UserProfile {
-  userId          String   @id @db.Uuid
-  legalFirstName  String?  // Encrypted at rest
-  legalLastName   String?  // Encrypted at rest
-  dateOfBirth     DateTime? // Encrypted at rest
-  country         String
-  nationality     String?
-  sourceOfFunds   String?
-  expectedVolume  String?
-  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+  userId         String    @id @db.Uuid
+  legalFirstName String? // Encrypted at rest
+  legalLastName  String? // Encrypted at rest
+  dateOfBirth    DateTime? // Encrypted at rest
+  country        String
+  nationality    String?
+  sourceOfFunds  String?
+  expectedVolume String?
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserSecurity {
-  userId             String    @id @db.Uuid
-  mfaSecret          String?   // Encrypted at rest
-  mfaEnabled         Boolean   @default(false)
-  antiPhishingCode   String?
-  passwordUpdatedAt  DateTime  @default(now()) @db.Timestamptz(6)
-  lockoutUntil       DateTime? @db.Timestamptz(6)
+  userId              String    @id @db.Uuid
+  mfaSecret           String? // Encrypted at rest
+  mfaEnabled          Boolean   @default(false)
+  antiPhishingCode    String?
+  passwordUpdatedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  lockoutUntil        DateTime? @db.Timestamptz(6)
   failedLoginAttempts Int       @default(0)
 
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserDevice {
-  id                String       @id @default(uuid()) @db.Uuid
-  userId            String       @db.Uuid
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
   deviceFingerprint String
   userAgent         String
   ipAddress         String
-  isTrusted         Boolean      @default(false)
-  lastLoginAt       DateTime     @default(now()) @db.Timestamptz(6)
+  isTrusted         Boolean  @default(false)
+  lastLoginAt       DateTime @default(now()) @db.Timestamptz(6)
 
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions          UserSession[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions UserSession[]
 
   @@unique([userId, deviceFingerprint])
 }
 
 model UserSession {
-  id               String     @id @default(uuid()) @db.Uuid
-  userId           String     @db.Uuid
-  deviceId         String     @db.Uuid
-  refreshTokenHash String     @unique
-  isRevoked        Boolean    @default(false)
-  expiresAt        DateTime   @db.Timestamptz(6)
-  createdAt        DateTime   @default(now()) @db.Timestamptz(6)
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  deviceId         String   @db.Uuid
+  refreshTokenHash String   @unique
+  isRevoked        Boolean  @default(false)
+  expiresAt        DateTime @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
 
-  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  device           UserDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device UserDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 }
 
 model Permission {
-  id          String   @id
+  id          String           @id
   description String
   roles       RolePermission[]
 }
 
 model Role {
-  id          String   @id
+  id          String           @id
   description String
   permissions RolePermission[]
   staff       StaffRole[]
@@ -124,8 +125,8 @@ model RolePermission {
   roleId       String
   permissionId String
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
@@ -134,8 +135,8 @@ model StaffRole {
   userId String @db.Uuid
   roleId String
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
 }
@@ -145,32 +146,53 @@ model LoginAttempt {
   email       String
   ipAddress   String
   userAgent   String
-  status      String   // e.g. SUCCESS, FAILED_CREDENTIALS, LOCKED_OUT
+  status      String // e.g. SUCCESS, FAILED_CREDENTIALS, LOCKED_OUT
   attemptTime DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model SecurityEvent {
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @db.Uuid
-  eventType   String   // e.g. MFA_DISABLED, PASSWORD_CHANGED, EMAIL_VERIFIED
+  eventType   String // e.g. MFA_DISABLED, PASSWORD_CHANGED, EMAIL_VERIFIED
   description String
   ipAddress   String
   eventTime   DateTime @default(now()) @db.Timestamptz(6)
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model KycApplication {
-  id             String      @id @default(uuid()) @db.Uuid
-  userId         String      @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
   level          KycLevel
-  status         KycStatus   @default(NOT_STARTED)
-  reviewerId     String?     @db.Uuid
+  status         KycStatus @default(NOT_STARTED)
+  reviewerId     String?   @db.Uuid
   reviewComments String?
-  createdAt      DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
 
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TradeMode {
+  SPOT
+  MARGIN
+}
+
+model MarginBalance {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  asset         String
+  balance       Decimal  @default(0) @db.Decimal(36, 18)
+  lockedBalance Decimal  @default(0) @db.Decimal(36, 18)
+  borrowed      Decimal  @default(0) @db.Decimal(36, 18)
+  interest      Decimal  @default(0) @db.Decimal(36, 18)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, asset])
 }
 
 enum AccountType {
@@ -204,25 +226,25 @@ enum OrderType {
 model Account {
   id            String      @id @default(uuid()) @db.Uuid
   userId        String      @db.Uuid
-  asset         String      // e.g. BTC, USDT
+  asset         String // e.g. BTC, USDT
   type          AccountType @default(LIABILITY)
-  balance       Decimal     @db.Decimal(36, 18) @default(0)
-  lockedBalance Decimal     @db.Decimal(36, 18) @default(0)
+  balance       Decimal     @default(0) @db.Decimal(36, 18)
+  lockedBalance Decimal     @default(0) @db.Decimal(36, 18)
   createdAt     DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime    @updatedAt @db.Timestamptz(6)
 
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   ledgerEntries LedgerEntry[]
 
   @@unique([userId, asset])
 }
 
 model LedgerTransaction {
-  id          String      @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   description String
-  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
 
-  entries     LedgerEntry[]
+  entries LedgerEntry[]
 }
 
 model LedgerEntry {
@@ -233,26 +255,27 @@ model LedgerEntry {
   amount        Decimal         @db.Decimal(36, 18)
   createdAt     DateTime        @default(now()) @db.Timestamptz(6)
 
-  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  account       Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account     Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
 model Order {
   id             String      @id @default(uuid()) @db.Uuid
   userId         String      @db.Uuid
-  symbol         String      // e.g. BTC_USDT
+  symbol         String // e.g. BTC_USDT
   side           OrderSide
   type           OrderType
   price          Decimal     @db.Decimal(36, 18)
   quantity       Decimal     @db.Decimal(36, 18)
-  filledQuantity Decimal     @db.Decimal(36, 18) @default(0)
+  filledQuantity Decimal     @default(0) @db.Decimal(36, 18)
   status         OrderStatus @default(PENDING)
+  tradeMode      TradeMode   @default(SPOT)
   createdAt      DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
 
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  buyTrades      Trade[]     @relation("BuyerOrder")
-  sellTrades     Trade[]     @relation("SellerOrder")
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyTrades  Trade[] @relation("BuyerOrder")
+  sellTrades Trade[] @relation("SellerOrder")
 }
 
 model Trade {
@@ -268,8 +291,8 @@ model Trade {
   takerFee      Decimal  @db.Decimal(36, 18)
   createdAt     DateTime @default(now()) @db.Timestamptz(6)
 
-  buyerOrder    Order    @relation("BuyerOrder", fields: [buyerOrderId], references: [id], onDelete: Cascade)
-  sellerOrder   Order    @relation("SellerOrder", fields: [sellerOrderId], references: [id], onDelete: Cascade)
+  buyerOrder  Order @relation("BuyerOrder", fields: [buyerOrderId], references: [id], onDelete: Cascade)
+  sellerOrder Order @relation("SellerOrder", fields: [sellerOrderId], references: [id], onDelete: Cascade)
 }
 
 model WalletAddress {
@@ -280,7 +303,7 @@ model WalletAddress {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, asset])
 }
@@ -297,7 +320,7 @@ model Deposit {
   createdAt     DateTime @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @db.Timestamptz(6)
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Withdrawal {
@@ -313,5 +336,5 @@ model Withdrawal {
   createdAt      DateTime @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @db.Timestamptz(6)
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
